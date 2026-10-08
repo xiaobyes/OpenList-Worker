@@ -44,11 +44,17 @@ function getEsaBlobBinding(env?: any): any | null {
 
 /**
  * 获取 EdgeOne Blob Store（使用 SDK）
+ *
+ * `consistency: "strong"` 走 no-cache 域读取，保证「写后立刻可读」。
+ * map 格式把整份配置放在单个键（openlist_config）里，而 SDK 默认的 eventual
+ * 走 CDN 缓存域（写入默认带 stale-while-revalidate=60），于是**另一个边缘节点**
+ * 上的读取最长约 60s 内仍可能拿到上一版配置，表现为「保存成功、刷新又变回去」
+ * 「刚初始化完登录失败」。store/json.ts 的 Blob 路径同样使用 strong，这里对齐。
  */
 async function getEdgeOneStore(namespace: string = "default"): Promise<any | null> {
   try {
     const { getStore } = await import("@edgeone/pages-blob")
-    return getStore(namespace)
+    return getStore({ name: namespace, consistency: "strong" } as any)
   } catch {
     return null
   }
